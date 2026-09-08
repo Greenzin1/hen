@@ -369,7 +369,7 @@ app.post('/1.1/media/upload.json', auth, (req, res) => {
 });
 
 // --- Web API fallback ---
-app.get('/web_api/:path*', (req, res) => res.json({}));
+app.get('/web_api/*', (req, res) => res.json({}));
 
 // ==========================================
 //  HEN WEB API (for the website)
