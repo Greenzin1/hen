@@ -12,7 +12,7 @@ input, textarea { font-family: inherit; font-size: 15px; }
 /* AUTH */
 #auth-screen { display: flex; min-height: 100vh; }
 .auth-left { flex: 1; background: var(--blue); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; }
-.auth-left .auth-logo { margin-bottom: 16px; color: #fff; }
+.auth-left .auth-logo { font-size: 120px; margin-bottom: 16px; color: #fff; }
 .auth-left h1 { font-size: 48px; font-weight: 800; margin-bottom: 12px; }
 .auth-left p { font-size: 20px; opacity: 0.9; }
 .auth-right { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; }
