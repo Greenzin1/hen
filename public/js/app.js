@@ -2,6 +2,19 @@ let token = localStorage.getItem('hen_token');
 let current_user = null;
 let current_view = '/';
 
+const ICONS = {
+  comment: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/></svg>',
+  repost: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>',
+  like: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>',
+  likeOutline: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>',
+  heartFill: '<svg viewBox="0 0 24 24" width="18" height="18" fill="#e0245e"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>',
+  notification: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>',
+  person: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>',
+  personNotif: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>',
+  logout: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>'
+};
+
 // === API ===
 async function api(path, opts = {}) {
   const h = { 'Content-Type': 'application/json' };
@@ -144,9 +157,9 @@ function renderPosts(posts, containerId, appendTo) {
         </div>
         <div class="post-content">${content}</div>
         <div class="post-actions">
-          <span class="post-action" onclick="event.stopPropagation();"><span class="action-icon">💬</span>${p.reply_count || ''}</span>
-          <span class="post-action ${p.reposted ? 'reposted' : ''}" onclick="event.stopPropagation();toggleRepost(${p.id},this)"><span class="action-icon">🔁</span>${p.repost_count || ''}</span>
-          <span class="post-action ${p.liked ? 'liked' : ''}" onclick="event.stopPropagation();toggleLike(${p.id},this)"><span class="action-icon">${p.liked ? '❤️' : '🤍'}</span>${p.like_count || ''}</span>
+          <span class="post-action" onclick="event.stopPropagation();"><span class="action-icon">${ICONS.comment}</span>${p.reply_count || ''}</span>
+          <span class="post-action ${p.reposted ? 'reposted' : ''}" onclick="event.stopPropagation();toggleRepost(${p.id},this)"><span class="action-icon">${ICONS.repost}</span>${p.repost_count || ''}</span>
+          <span class="post-action ${p.liked ? 'liked' : ''}" onclick="event.stopPropagation();toggleLike(${p.id},this)"><span class="action-icon">${p.liked ? ICONS.heartFill : ICONS.likeOutline}</span>${p.like_count || ''}</span>
         </div>
       </div></div>`;
   }).join('');
@@ -169,8 +182,8 @@ async function toggleRepost(id, el) {
 async function loadPost(id) {
   const r = await api('/posts/' + id);
   const v = document.getElementById('view-post');
-  if (r.error) { v.innerHTML = '<div class="view-header"><button onclick="history.back()">←</button><h2>Post</h2></div><div class="loading">Post não encontrado</div>'; return; }
-  let html = `<div class="view-header"><button onclick="history.back()" style="background:none;font-size:20px">←</button><h2>Post</h2></div>`;
+  if (r.error) { v.innerHTML = '<div class="view-header"><button onclick="history.back()" style="background:none;font-size:20px">&larr;</button><h2>Post</h2></div><div class="loading">Post não encontrado</div>'; return; }
+  let html = `<div class="view-header"><button onclick="history.back()" style="background:none;font-size:20px">&larr;</button><h2>Post</h2></div>`;
   if (r.parent) html += renderSinglePost(r.parent, false);
   html += renderSinglePost(r.post, true);
   if (r.replies?.length) {
@@ -198,9 +211,9 @@ function renderSinglePost(p, big) {
       </div>
       <div class="post-content" style="font-size:${big ? '23px' : '15px'}">${content}</div>
       <div class="post-actions">
-        <span class="post-action"><span class="action-icon">💬</span>${p.reply_count || ''}</span>
-        <span class="post-action ${p.reposted ? 'reposted' : ''}" onclick="toggleRepost(${p.id},this)"><span class="action-icon">🔁</span>${p.repost_count || ''}</span>
-        <span class="post-action ${p.liked ? 'liked' : ''}" onclick="toggleLike(${p.id},this)"><span class="action-icon">${p.liked ? '❤️' : '🤍'}</span>${p.like_count || ''}</span>
+        <span class="post-action"><span class="action-icon">${ICONS.comment}</span>${p.reply_count || ''}</span>
+        <span class="post-action ${p.reposted ? 'reposted' : ''}" onclick="toggleRepost(${p.id},this)"><span class="action-icon">${ICONS.repost}</span>${p.repost_count || ''}</span>
+        <span class="post-action ${p.liked ? 'liked' : ''}" onclick="toggleLike(${p.id},this)"><span class="action-icon">${p.liked ? ICONS.heartFill : ICONS.likeOutline}</span>${p.like_count || ''}</span>
       </div>
     </div></div>`;
 }
@@ -218,7 +231,7 @@ async function loadProfile(username) {
   if (u.error) { document.getElementById('view-profile').innerHTML = '<div class="view-header"><h2>Perfil</h2></div><div class="loading">Usuário não encontrado</div>'; return; }
   const isMe = current_user.username === u.username;
   const v = document.getElementById('view-profile');
-  v.innerHTML = `<div class="view-header"><button onclick="history.back()" style="background:none;font-size:20px">←</button><h2>${u.display_name}</h2></div>
+  v.innerHTML = `<div class="view-header"><button onclick="history.back()" style="background:none;font-size:20px">&larr;</button><h2>${u.display_name}</h2></div>
     <div class="profile-banner"></div>
     <div class="profile-info">
       <div class="avatar profile-avatar" style="width:80px;height:80px;font-size:32px;border:4px solid var(--bg)">${u.display_name[0].toUpperCase()}</div>
@@ -276,15 +289,15 @@ async function loadNotifications() {
   const el = document.getElementById('notif-list');
   if (!notifs.length) { el.innerHTML = '<div class="loading">Nenhuma notificação</div>'; return; }
   el.innerHTML = notifs.map(n => {
-    if (n.type === 'like') return `<div class="notif-item" onclick="go('/post/${n.post_id}')"><div class="notif-icon">❤️</div><div class="notif-content"><div class="notif-text"><strong>${n.display_name}</strong> curtiu seu post</div><div class="notif-time">${timeAgo(n.created_at)}</div></div></div>`;
-    return `<div class="notif-item" onclick="go('/profile/${n.username}')"><div class="notif-icon">👤</div><div class="notif-content"><div class="notif-text"><strong>${n.display_name}</strong> começou a seguir você</div><div class="notif-time">${timeAgo(n.created_at)}</div></div></div>`;
+    if (n.type === 'like') return `<div class="notif-item" onclick="go('/post/${n.post_id}')"><div class="notif-icon notif-like">${ICONS.heartFill}</div><div class="notif-content"><div class="notif-text"><strong>${n.display_name}</strong> curtiu seu post</div><div class="notif-time">${timeAgo(n.created_at)}</div></div></div>`;
+    return `<div class="notif-item" onclick="go('/profile/${n.username}')"><div class="notif-icon notif-follow">${ICONS.personNotif}</div><div class="notif-content"><div class="notif-text"><strong>${n.display_name}</strong> começou a seguir você</div><div class="notif-time">${timeAgo(n.created_at)}</div></div></div>`;
   }).join('');
 }
 
 // === TAG ===
 async function loadTag(tag) {
   const v = document.getElementById('view-tag');
-  v.innerHTML = `<div class="view-header"><button onclick="history.back()" style="background:none;font-size:20px">←</button><h2>#${tag}</h2></div><div id="tag-posts" class="loading">Carregando...</div>`;
+  v.innerHTML = `<div class="view-header"><button onclick="history.back()" style="background:none;font-size:20px">&larr;</button><h2>#${tag}</h2></div><div id="tag-posts" class="loading">Carregando...</div>`;
   const posts = await api('/posts?hashtag=' + encodeURIComponent(tag));
   renderPosts(posts, 'tag-posts');
 }
@@ -293,8 +306,8 @@ async function loadTag(tag) {
 function loadMore() {
   document.getElementById('view-more').innerHTML = `<div class="view-header"><h2>Mais</h2></div>
     <ul class="more-menu">
-      <li class="more-item" onclick="openEditProfile()">✏️ Editar perfil</li>
-      <li class="more-item" onclick="api('/logout',{method:'POST'}).then(()=>{localStorage.removeItem('hen_token');location.reload()})">🚪 Sair</li>
+      <li class="more-item" onclick="openEditProfile()"><span class="more-icon">${ICONS.edit}</span> Editar perfil</li>
+      <li class="more-item" onclick="api('/logout',{method:'POST'}).then(()=>{localStorage.removeItem('hen_token');location.reload()})"><span class="more-icon">${ICONS.logout}</span> Sair</li>
     </ul>`;
 }
 

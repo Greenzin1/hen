@@ -255,5 +255,15 @@ app.get('/api/notifications', auth, (req, res) => {
   res.json(all.slice(0, 30));
 });
 
+// === DOWNLOAD PAGE ===
+app.get('/download', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'download.html'));
+});
+
+// === SERVE APK ===
+app.get('/hen.apk', (req, res) => {
+  res.download(path.join(__dirname, 'hen.apk'), 'hen.apk');
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Hen 🐔 running on port ${PORT}`));
