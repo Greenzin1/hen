@@ -92,7 +92,7 @@ window.onhashchange = () => go(window.location.hash.slice(1) || '/');
 async function loadFeed() {
   const v = document.getElementById('view-home');
   v.innerHTML = `
-    <div class="view-header"><h2>Home</h2></div>
+    <div class="view-header"><span style="filter:grayscale(1) brightness(0.4) contrast(2);font-size:24px">🐔</span><h2>Home</h2></div>
     <div class="compose-inline">
       <div class="avatar">${current_user.display_name[0].toUpperCase()}</div>
       <textarea id="home-compose" placeholder="O que está acontecendo?" maxlength="280" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
