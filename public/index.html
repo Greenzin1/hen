@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hen</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div id="app">
+  <!-- AUTH SCREENS -->
+  <div id="auth-screen" class="screen">
+    <div class="auth-left">
+      <div class="auth-logo">🐔</div>
+      <h1>Hen</h1>
+      <p>Veja o que está acontecendo agora</p>
+    </div>
+    <div class="auth-right">
+      <div class="auth-box">
+        <h2>Crie sua conta</h2>
+        <form id="signup-form">
+          <input type="text" id="signup-displayname" placeholder="Nome" required>
+          <input type="text" id="signup-username" placeholder="Usuário" required>
+          <input type="email" id="signup-email" placeholder="Email" required>
+          <input type="password" id="signup-password" placeholder="Senha" required>
+          <button type="submit" class="btn-primary">Cadastrar</button>
+        </form>
+        <p class="auth-switch">Já tem conta? <a href="#" onclick="showLogin()">Entrar</a></p>
+      </div>
+      <div id="login-box" class="auth-box" style="display:none">
+        <h2>Entrar no Hen</h2>
+        <form id="login-form">
+          <input type="text" id="login-user" placeholder="Usuário ou email" required>
+          <input type="password" id="login-pass" placeholder="Senha" required>
+          <button type="submit" class="btn-primary">Entrar</button>
+        </form>
+        <p class="auth-switch">Não tem conta? <a href="#" onclick="showSignup()">Cadastrar</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="main-screen" class="screen" style="display:none">
+    <!-- LEFT NAV -->
+    <nav class="left-nav">
+      <div class="nav-logo">🐔</div>
+      <ul class="nav-items">
+        <li class="nav-item active" onclick="go('/')"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></li>
+        <li class="nav-item" onclick="go('/explore')"><span class="nav-icon">🔍</span><span class="nav-label">Explorar</span></li>
+        <li class="nav-item" onclick="go('/notifications')"><span class="nav-icon">🔔</span><span class="nav-label">Notificações</span></li>
+        <li class="nav-item" onclick="go('/profile/'+current_user.username)"><span class="nav-icon">👤</span><span class="nav-label">Perfil</span></li>
+        <li class="nav-item" onclick="go('/more')"><span class="nav-icon">⋯</span><span class="nav-label">Mais</span></li>
+      </ul>
+      <button class="btn-tweet" onclick="openCompose()"> Postar</button>
+      <div class="nav-profile" onclick="go('/profile/'+current_user.username)">
+        <div class="avatar avatar-sm" id="nav-avatar"></div>
+        <div class="nav-profile-info">
+          <span class="nav-displayname" id="nav-displayname"></span>
+          <span class="nav-username" id="nav-username"></span>
+        </div>
+      </div>
+    </nav>
+
+    <!-- CENTER CONTENT -->
+    <main class="center-content">
+      <!-- COMPOSE MODAL -->
+      <div id="compose-modal" class="modal" style="display:none">
+        <div class="modal-backdrop" onclick="closeCompose()"></div>
+        <div class="compose-dialog">
+          <div class="compose-header">
+            <button class="close-btn" onclick="closeCompose()">✕</button>
+          </div>
+          <div class="compose-body">
+            <div class="avatar" id="compose-avatar"></div>
+            <textarea id="compose-input" placeholder="O que está acontecendo?" maxlength="280"></textarea>
+          </div>
+          <div class="compose-footer">
+            <span id="char-count">280</span>
+            <button class="btn-tweet-sm" onclick="submitPost()">Postar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEWS -->
+      <div id="view-home"></div>
+      <div id="view-explore" style="display:none"></div>
+      <div id="view-profile" style="display:none"></div>
+      <div id="view-post" style="display:none"></div>
+      <div id="view-notifications" style="display:none"></div>
+      <div id="view-more" style="display:none"></div>
+      <div id="view-tag" style="display:none"></div>
+    </main>
+
+    <!-- RIGHT SIDEBAR -->
+    <aside class="right-sidebar">
+      <div class="search-box">
+        <input type="text" id="search-input" placeholder="Buscar no Hen" onkeyup="if(event.key==='Enter')doSearch()">
+      </div>
+      <div class="trends-box">
+        <h3>Assuntos do momento</h3>
+        <div id="trends-list"></div>
+      </div>
+      <div class="follow-box">
+        <h3>Quem seguir</h3>
+        <div id="suggestions-list"></div>
+      </div>
+    </aside>
+  </div>
+</div>
+<script src="/js/app.js"></script>
+</body>
+</html>
