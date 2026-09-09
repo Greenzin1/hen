@@ -79,7 +79,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // === AUTH HELPERS ===
 function auth(req, res, next) {
-  const t = req.headers.authorization?.replace('Bearer ', '');
+  const t = req.headers.authorization?.replace('Bearer ', '')
+    || req.headers['x-twitter-new-account-oauth-access-token']
+    || req.headers['kdt'];
   if (!t) return res.status(401).json({ errors: [{ message: 'Token required' }] });
   const s = db.prepare('SELECT user_id FROM sessions WHERE token = ?').get(t);
   if (!s) return res.status(401).json({ errors: [{ message: 'Invalid token' }] });
@@ -88,7 +90,9 @@ function auth(req, res, next) {
 }
 
 function optAuth(req, res, next) {
-  const t = req.headers.authorization?.replace('Bearer ', '');
+  const t = req.headers.authorization?.replace('Bearer ', '')
+    || req.headers['x-twitter-new-account-oauth-access-token']
+    || req.headers['kdt'];
   if (t) {
     const s = db.prepare('SELECT user_id FROM sessions WHERE token = ?').get(t);
     if (s) req.userId = s.user_id;
@@ -301,27 +305,47 @@ app.get('/1.1/account/settings.json', auth, (req, res) => {
   res.json({ screen_name: getUser(req.userId).screen_name, language: 'pt' });
 });
 
-// --- Login/Register (Twitter OAuth flow simulation) ---
-app.post('/1.1/account/login.json', (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ errors: [{ message: 'Missing fields' }] });
-  const u = db.prepare('SELECT * FROM users WHERE username=? OR email=?').get(username, username);
-  if (!u || !bcrypt.compareSync(password, u.password_hash)) return res.status(401).json({ errors: [{ message: 'Wrong password' }] });
-  const token = uuidv4();
-  db.prepare('INSERT INTO sessions (token, user_id) VALUES (?,?)').run(token, u.id);
-  res.json({ token, user: formatUser(getUser(u.id)) });
-});
+app.post('/1.1/account/create.json', (req, res) => {
+  const { name, email, username, password, sso_identifier } = req.body;
+  const loginId = username || email || sso_identifier;
+  console.log(`[account/create] loginId=${loginId} name=${name}`);
 
-app.post('/1.1/account/register.json', (req, res) => {
-  const { username, email, password, name } = req.body;
-  if (!username || !email || !password || !name) return res.status(400).json({ errors: [{ message: 'All fields required' }] });
+  // Try login first
+  if (loginId && password && !name) {
+    const u = db.prepare('SELECT * FROM users WHERE username=? OR email=?').get(loginId, loginId);
+    if (u && bcrypt.compareSync(password, u.password_hash)) {
+      const token = uuidv4();
+      const secret = uuidv4();
+      db.prepare('INSERT INTO sessions (token, user_id) VALUES (?,?)').run(token, u.id);
+      console.log(`[account/create] login OK: ${u.username}`);
+      res.setHeader('x-twitter-new-account-oauth-access-token', token);
+      res.setHeader('x-twitter-new-account-oauth-secret', secret);
+      res.setHeader('kdt', token);
+      return res.json(formatUser(getUser(u.id)));
+    }
+    console.log(`[account/create] login FAILED`);
+    return res.status(401).json({ errors: [{ message: 'Invalid credentials', code: 57 }] });
+  }
+
+  // Try signup
+  if (!loginId || !email || !password || !name) {
+    return res.status(400).json({ errors: [{ message: 'Missing fields' }] });
+  }
   try {
     const hash = bcrypt.hashSync(password, 10);
-    const r = db.prepare('INSERT INTO users (username, display_name, email, password_hash) VALUES (?,?,?,?)').run(username, name, email, hash);
+    const r = db.prepare('INSERT INTO users (username, display_name, email, password_hash) VALUES (?,?,?,?)').run(loginId, name, email, hash);
     const token = uuidv4();
+    const secret = uuidv4();
     db.prepare('INSERT INTO sessions (token, user_id) VALUES (?,?)').run(token, r.lastInsertRowid);
-    res.json({ token, user: formatUser(getUser(r.lastInsertRowid)) });
-  } catch { res.status(400).json({ errors: [{ message: 'Username or email already taken' }] }); }
+    console.log(`[account/create] signup OK: ${loginId}`);
+    res.setHeader('x-twitter-new-account-oauth-access-token', token);
+    res.setHeader('x-twitter-new-account-oauth-secret', secret);
+    res.setHeader('kdt', token);
+    return res.json(formatUser(getUser(r.lastInsertRowid)));
+  } catch {
+    return res.status(400).json({ errors: [{ message: 'Username or email already taken' }] });
+  }
+});
 });
 
 // --- Tweets ---
