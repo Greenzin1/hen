@@ -3,6 +3,7 @@ const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
+const { spawn } = require('child_process');
 
 const app = express();
 const db = new Database(path.join(__dirname, 'hen.db'));
@@ -152,6 +153,127 @@ function formatUser(u) {
     profile_image_url_https: `https://ui-avatars.com/api/?name=${encodeURIComponent(u.display_name)}&background=random&size=48`
   };
 }
+
+// ==========================================
+//  OAUTH 1.0a ENDPOINTS (for APK login)
+// ==========================================
+
+// Temporary storage for OAuth flows
+const oauthRequests = {};
+
+app.post('/oauth/request_token', (req, res) => {
+  const token = 'req_' + uuidv4().replace(/-/g, '').slice(0, 16);
+  const secret = 'sec_' + uuidv4().replace(/-/g, '').slice(0, 16);
+  oauthRequests[token] = { secret, created: Date.now() };
+  console.log(`[oauth] request_token: ${token}`);
+  res.type('application/x-www-form-urlencoded').send(
+    `oauth_token=${token}&oauth_token_secret=${secret}&oauth_callback_confirmed=true`
+  );
+});
+
+app.get('/oauth/authorize', (req, res) => {
+  const { oauth_token } = req.query;
+  console.log(`[oauth] authorize page for: ${oauth_token}`);
+  res.send(`<!DOCTYPE html>
+<html><head><title>Hen - Autorizar</title>
+<style>
+body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#15202b;color:#e7e9ea;margin:0}
+.card{background:#2f3336;border-radius:16px;padding:32px;max-width:400px;width:90%;text-align:center}
+h1{font-size:28px;margin-bottom:8px}
+p{color:#71767b;margin-bottom:24px}
+input{width:100%;padding:12px;border:1px solid #536471;border-radius:4px;margin-bottom:12px;background:#2f3336;color:#e7e9ea;font-size:16px;box-sizing:border-box}
+.btn{width:100%;padding:12px;background:#1d9bf0;color:#fff;border:none;border-radius:9999px;font-size:16px;font-weight:700;cursor:pointer}
+.btn:hover{background:#1a8cd8}
+.error{color:#f4212e;margin-top:8px;font-size:14px}
+</style></head><body>
+<div class="card">
+<h1>Hen</h1>
+<p>Entre pra autorizar o app</p>
+<form method="POST" action="/oauth/authorize">
+<input type="hidden" name="oauth_token" value="${oauth_token}">
+<input type="text" name="username" placeholder="Usuario ou email" required>
+<input type="password" name="password" placeholder="Senha" required>
+<div id="err" class="error" style="display:none"></div>
+<button type="submit" class="btn">Autorizar</button>
+</form>
+</div></body></html>`);
+});
+
+app.post('/oauth/authorize', (req, res) => {
+  const { oauth_token, username, password } = req.body;
+  console.log(`[oauth] authorize attempt for token: ${oauth_token}, user: ${username}`);
+
+  const reqData = oauthRequests[oauth_token];
+  if (!reqData) {
+    console.log(`[oauth] invalid request token: ${oauth_token}`);
+    return res.status(400).send('Token de requisicao invalido');
+  }
+
+  const u = db.prepare('SELECT * FROM users WHERE username=? OR email=?').get(username, username);
+  if (!u || !bcrypt.compareSync(password, u.password_hash)) {
+    console.log(`[oauth] auth failed for: ${username}`);
+    return res.send(`<!DOCTYPE html>
+<html><head><title>Hen - Erro</title>
+<style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#15202b;color:#e7e9ea;margin:0}
+.card{background:#2f3336;border-radius:16px;padding:32px;max-width:400px;width:90%;text-align:center}
+h1{font-size:28px;margin-bottom:8px}
+p{color:#f4212e;margin-bottom:24px}
+.btn{display:inline-block;padding:12px 24px;background:#1d9bf0;color:#fff;border:none;border-radius:9999px;font-size:16px;font-weight:700;cursor:pointer;text-decoration:none}</style></head><body>
+<div class="card"><h1>Hen</h1><p>Usuario ou senha incorretos</p>
+<a href="/oauth/authorize?oauth_token=${oauth_token}" class="btn">Tentar novamente</a></div></body></html>`);
+  }
+
+  const verifier = 'ver_' + uuidv4().replace(/-/g, '').slice(0, 16);
+  reqData.verifier = verifier;
+  reqData.userId = u.id;
+
+  // Build callback URL
+  const callback = `https://hen.serveousercontent.com/oauth/callback?oauth_token=${oauth_token}&oauth_verifier=${verifier}`;
+  console.log(`[oauth] authorized! redirecting to: ${callback}`);
+  res.redirect(callback);
+});
+
+app.get('/oauth/callback', (req, res) => {
+  const { oauth_token, oauth_verifier } = req.query;
+  console.log(`[oauth] callback: token=${oauth_token}, verifier=${oauth_verifier}`);
+  res.send('<html><body><script>setTimeout(function(){window.close()},1000)</script>Autorizado! Pode fechar esta janela.</body></html>');
+});
+
+app.post('/oauth/access_token', (req, res) => {
+  const auth = req.body || {};
+  // Parse from body or form
+  let oauth_token = auth.oauth_token;
+  let oauth_verifier = auth.oauth_verifier;
+
+  // Also try parsing from URL-encoded body
+  if (!oauth_token && req.body) {
+    const pairs = req.body.split('&');
+    for (const p of pairs) {
+      const [k, v] = p.split('=');
+      if (k === 'oauth_token') oauth_token = decodeURIComponent(v);
+      if (k === 'oauth_verifier') oauth_verifier = decodeURIComponent(v);
+    }
+  }
+
+  console.log(`[oauth] access_token request: token=${oauth_token}, verifier=${oauth_verifier}`);
+
+  const reqData = oauthRequests[oauth_token];
+  if (!reqData || reqData.verifier !== oauth_verifier) {
+    console.log(`[oauth] access_token FAILED`);
+    return res.status(401).send('oauth_problem=token_rejected');
+  }
+
+  const sessionToken = uuidv4();
+  db.prepare('INSERT INTO sessions (token, user_id) VALUES (?,?)').run(sessionToken, reqData.userId);
+  delete oauthRequests[oauth_token];
+
+  const u = getUser(reqData.userId);
+  console.log(`[oauth] access_token OK for user: ${u.username}`);
+
+  res.type('application/x-www-form-urlencoded').send(
+    `oauth_token=${sessionToken}&oauth_token_secret=&user_id=${u.id}&screen_name=${u.username}`
+  );
+});
 
 // ==========================================
 //  TWITTER API 1.1 COMPATIBLE ENDPOINTS
@@ -525,4 +647,49 @@ app.use((req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Hen 🐔 running on port ${PORT}`));
+
+app.listen(PORT, () => {
+  console.log(`Hen 🐔 running on port ${PORT}`);
+  startTunnel();
+});
+
+let tunnelProcess = null;
+
+function startTunnel() {
+  if (tunnelProcess) {
+    tunnelProcess.removeAllListeners();
+    tunnelProcess.kill('SIGTERM');
+  }
+
+  console.log('[tunnel] Conectando ao serveo...');
+  tunnelProcess = spawn('ssh', [
+    '-o', 'StrictHostKeyChecking=no',
+    '-o', 'ServerAliveInterval=30',
+    '-o', 'ServerAliveCountMax=3',
+    '-o', 'ExitOnForwardFailure=yes',
+    '-R', 'hen:80:localhost:' + PORT,
+    'serveo.net'
+  ], { stdio: 'pipe' });
+
+  tunnelProcess.stdout.on('data', (d) => {
+    const msg = d.toString();
+    if (msg.includes('Forwarding')) console.log('[tunnel] ' + msg.trim());
+  });
+
+  tunnelProcess.stderr.on('data', (d) => {
+    const msg = d.toString();
+    if (msg.includes('Forwarding')) console.log('[tunnel] ' + msg.trim());
+  });
+
+  tunnelProcess.on('exit', (code) => {
+    console.log(`[tunnel] Desconectado (code ${code}). Reconectando em 5s...`);
+    setTimeout(startTunnel, 5000);
+  });
+
+  tunnelProcess.on('error', (err) => {
+    console.log(`[tunnel] Erro: ${err.message}. Reconectando em 5s...`);
+    setTimeout(startTunnel, 5000);
+  });
+
+  console.log('[tunnel] https://hen.serveousercontent.com');
+}
