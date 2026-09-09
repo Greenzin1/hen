@@ -346,7 +346,6 @@ app.post('/1.1/account/create.json', (req, res) => {
     return res.status(400).json({ errors: [{ message: 'Username or email already taken' }] });
   }
 });
-});
 
 // --- Tweets ---
 app.get('/1.1/statuses/home_timeline.json', auth, (req, res) => {
